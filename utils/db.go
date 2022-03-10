@@ -12,22 +12,23 @@ func PingDB(db *gorm.DB) error {
 	return ping.Error
 }
 
-func GetDSN(databaseURL string) string {
+func GetDSN(url string) string {
+	dsnFormat := "host=%v user=%v password=%v dbname=%v port=%v sslmode=disable"
 	var host string
 	var user string
-	var password string
+	var word string
 	var dbname string
 	var port string
 
-	s1 := strings.Split(databaseURL, "://")
+	s1 := strings.Split(url, "://")
 	s2 := strings.Split(s1[1], ":")
 	user = s2[0]
 	s3 := strings.Split(s2[1], "@")
-	password = s3[0]
+	word = s3[0]
 	host = s3[1]
 	s4 := strings.Split(s2[2], "/")
 	port = s4[0]
 	dbname = s4[1]
 
-	return fmt.Sprintf("host=%v user=%v password=%v dbname=%v port=%v sslmode=disable", host, user, password, dbname, port)
+	return fmt.Sprintf(dsnFormat, host, user, word, dbname, port)
 }

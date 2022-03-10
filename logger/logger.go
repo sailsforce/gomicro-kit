@@ -3,6 +3,7 @@ package logger
 import (
 	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/go-chi/chi/v5/middleware"
@@ -34,6 +35,7 @@ func (l *StructuredLogger) NewLogEntry(r *http.Request) middleware.LogEntry {
 	if r.TLS != nil {
 		scheme = "https"
 	}
+	logFields["heroku_app_id"] = os.Getenv("HEROKU_APP_ID")
 	logFields["http_scheme"] = scheme
 	logFields["http_proto"] = r.Proto
 	logFields["http_method"] = r.Method

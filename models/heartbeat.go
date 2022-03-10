@@ -9,3 +9,8 @@ type Heartbeat struct {
 	Slug           string `json:"slugCommit"`
 	Message        string `json:"message"`
 }
+
+type ServicePoolStatus struct {
+	RequestID string      `json:"requestId"`
+	Services  []Heartbeat `json:"services"`
+}
