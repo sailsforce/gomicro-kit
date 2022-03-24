@@ -1,0 +1,13 @@
+repos:
+  - repo: https://github.com/tekwizely/pre-commit-golang
+    rev: master
+    hooks:
+      - id: go-mod-tidy
+      - id: go-vet
+      - id: go-fmt
+      - id: golangci-lint
+  - repo: git://github.com/dnephin/pre-commit-golang
+    rev: master
+    hooks:
+      - id: go-cyclo
+        args: [-over=15, -ignore=vendor/*]
