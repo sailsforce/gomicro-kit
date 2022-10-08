@@ -3,8 +3,12 @@ package config
 import (
 	"bytes"
 	"database/sql"
+	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"os"
+	"strings"
 
 	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/go-chi/render"
@@ -90,6 +94,40 @@ func (c *MicroRestConfig) LoadServiceInfo() {
 		os.Getenv("SERVICE_ROUTES"),
 		os.Getenv("GATEWAY_URL"),
 	}
+}
+
+func (c *MicroRestConfig) RegisterAtGateway() error {
+	c.Logger.Info("registering service...")
+	var routesJson map[string]interface{}
+	err := json.Unmarshal([]byte(c.Service.Routes), &routesJson)
+	if err != nil {
+		return errors.New(fmt.Sprintf("%s %v", "error parsing routes json: ", err))
+	}
+	routesBytes, err := json.Marshal(routesJson)
+	if err != nil {
+		return errors.New(fmt.Sprintf("%s %v", "error marshalling routes json: ", err))
+	}
+	service := models.Service{
+		ServiceName:     c.Service.Name,
+		ServiceSummary:  c.Service.Summary,
+		ServiceOnline:   true,
+		ServiceProtocol: c.Service.Protocal,
+		ServiceVersion:  c.Service.Version,
+		BaseURL:         c.Service.BaseURL,
+		Routes:          routesBytes,
+	}
+
+	err = service.RegisterAtGateway(c.Service.GatewayURL)
+	if err != nil {
+		if strings.Contains(err.Error(), "409") {
+			c.Logger.Info("service already registered.")
+		} else {
+			return errors.New(fmt.Sprintf("%s %v", "error registering service: ", err))
+		}
+	}
+
+	c.Logger.Info("register complete at: ", c.Service.GatewayURL)
+	return nil
 }
 
 func (c *MicroRestConfig) AddRV(key string, val interface{}) {
