@@ -1,11 +1,13 @@
 package config
 
 import (
+	"bytes"
 	"database/sql"
 	"log"
 	"os"
 
 	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/go-chi/render"
 	"github.com/newrelic/go-agent/v3/newrelic"
 	"github.com/sailsforce/gomicro-kit/models"
 	"github.com/sailsforce/gomicro-kit/utils"
@@ -44,6 +46,13 @@ type MicroRestConfig struct {
 	// only used if more than one db is needed.
 	DBList   []*gorm.DB
 	HmacKeys *models.HmacKeys
+}
+
+func (c *MicroRestConfig) DefaultMicroConfig() {
+	c.LoadNewRelicInfo()
+	c.LoadServiceInfo()
+	c.LoadLogger()
+	c.LoadDatabases(c.Logger.Level, "DATABASE_URL")
 }
 
 func (c *MicroRestConfig) LoadNewRelicInfo() {
@@ -128,24 +137,38 @@ func (c *MicroRestConfig) LoadMockDatabase() {
 }
 
 func (c *MicroRestConfig) LoadDatabases(logLvl logrus.Level, dburls ...string) {
-	if len(dburls) == 1 {
-		// use DB var in config
-		db, err := connectToDB(dburls[0], logLvl)
-		if err != nil {
-			log.Fatal("error connecting to db: ", err)
-			return
+	if os.Getenv("DATABASE_URL") != "" {
+		if len(dburls) == 1 {
+			// use DB var in config
+			db, err := connectToDB(dburls[0], logLvl)
+			if err != nil {
+				log.Fatal("error connecting to db: ", err)
+				return
+			}
+			c.DB = db
+		} else {
+			for _, v := range dburls {
+				db, err := connectToDB(v, logLvl)
+				if err != nil {
+					log.Fatal("error connecting to db: ", err)
+					return
+				}
+				// use DBList to populate all the databases given.
+				c.DBList = append(c.DBList, db)
+			}
 		}
-		c.DB = db
 	}
-	for _, v := range dburls {
-		db, err := connectToDB(v, logLvl)
-		if err != nil {
-			log.Fatal("error connecting to db: ", err)
-			return
-		}
-		// use DBList to populate all the databases given.
-		c.DBList = append(c.DBList, db)
+}
+
+func (c *MicroRestConfig) LoadHMACKeys() {
+	// load in hmac keys
+	var hmacKeys models.HmacKeys
+	err := render.DecodeJSON(bytes.NewReader([]byte(os.Getenv("HMAC_SECRETS"))), &hmacKeys)
+	if err != nil {
+		log.Fatal("error pullin in hmac secret json obj: ", err)
+		return
 	}
+	c.HmacKeys = &hmacKeys
 }
 
 func connectToDB(dburl string, logLvl logrus.Level) (*gorm.DB, error) {
