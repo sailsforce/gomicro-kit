@@ -139,6 +139,74 @@ var _ = Describe("Config Tests", func() {
 	})
 
 	Describe("LoadLogger", func() {
+		It("should use default log lvl", func() {
+			Expect(c.Logger).To(BeNil())
+			c.LoadLogger()
+			Expect(c.Logger.Level.String()).To(Equal("info"))
+		})
+		It("should use debug log lvl", func() {
+			os.Setenv("LOG_LEVEL", "debug")
+			Expect(c.Logger).To(BeNil())
+			c.LoadLogger()
+			Expect(c.Logger.Level.String()).To(Equal("debug"))
+		})
+		It("should use error log lvl", func() {
+			os.Setenv("LOG_LEVEL", "error")
+			Expect(c.Logger).To(BeNil())
+			c.LoadLogger()
+			Expect(c.Logger.Level.String()).To(Equal("error"))
+		})
+	})
 
+	Describe("LoadMockDatabase", func() {
+		It("should init DB with sqlMock", func() {
+			c.LoadLogger()
+			Expect(c.DB).To(BeNil())
+			c.LoadMockDatabase()
+			Expect(c.DB).ToNot(BeNil())
+		})
+	})
+
+	Describe("LoadDatabases", func() {
+		It("should return error w/ one db url", func() {
+			os.Setenv("DATABASE_URL", "postgres://postgres:admin@host.docker.internal:5437/postgres")
+			c.LoadLogger()
+			Expect(c.DB).To(BeNil())
+			err := c.LoadDatabases(c.Logger.Level, "DATABASE_URL")
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(ContainSubstring("error connecting to db:"))
+		})
+		It("should return error w/ many db urls", func() {
+			os.Setenv("DATABASE_URL", "postgres://postgres:admin@host.docker.internal:5437/postgres")
+			os.Setenv("ANOTHER_URL", "postgres://postgres:admin@host.docker.internal:5438/another")
+			os.Setenv("THREE_DBS", "postgres://postgres:admin@host.docker.internal:5439/three")
+			c.LoadLogger()
+			Expect(c.DB).To(BeNil())
+			err := c.LoadDatabases(c.Logger.Level, "DATABASE_URL", "ANOTHER_URL", "THREE_DBS")
+			Expect(err).ToNot(BeNil())
+			Expect(err.Error()).To(ContainSubstring("error connecting to db:"))
+		})
+	})
+
+	Describe("LoadHMACKeys", func() {
+		It("should pass and load object", func() {
+			os.Setenv("HMAC_SECRETS", "{\"name\": \"Hmac keys\", \"keys\": [{\"created\": \"2021-10-12T18:00:42Z\", \"value\": \"supersecretkeyvalue\"},{\"created\": \"2020-10-13T18:00:42Z\", \"value\": \"anothersupersecretvalue\"}]}")
+			err := c.LoadHMACKeys()
+			Expect(err).To(BeNil())
+			Expect(c.HmacKeys.Name).To(Equal("Hmac keys"))
+			Expect(c.HmacKeys.Keys[0].Value).To(Equal("supersecretkeyvalue"))
+			Expect(c.HmacKeys.Keys[1].Value).To(Equal("anothersupersecretvalue"))
+		})
+		It("should error", func() {
+			os.Setenv("HMAC_SECRETS", "{name: \"Hmac keys\", \"keys\": [{\"created\": \"2021-10-12T18:00:42Z\", \"value\": \"supersecretkeyvalue\"},{\"created\": \"2020-10-13T18:00:42Z\", \"value\": \"anothersupersecretvalue\"}]}")
+			err := c.LoadHMACKeys()
+			Expect(err).ToNot(BeNil())
+		})
+	})
+
+	Describe("DefaultMicroConfig", func() {
+		err := c.DefaultMicroConfig()
+		Expect(err).To(BeNil())
+		Expect(c.Logger.Level.String()).To(Equal("info"))
 	})
 })

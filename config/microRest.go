@@ -50,11 +50,16 @@ type MicroRestConfig struct {
 	HmacKeys *models.HmacKeys
 }
 
-func (c *MicroRestConfig) DefaultMicroConfig() {
-	c.LoadNewRelicInfo()
+func (c *MicroRestConfig) DefaultMicroConfig() error {
+	if err := c.LoadNewRelicInfo(); err != nil {
+		return err
+	}
 	c.LoadServiceInfo()
 	c.LoadLogger()
-	c.LoadDatabases(c.Logger.Level, "DATABASE_URL")
+	if err := c.LoadDatabases(c.Logger.Level, "DATABASE_URL"); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *MicroRestConfig) LoadNewRelicInfo() error {
@@ -182,39 +187,38 @@ func (c *MicroRestConfig) LoadMockDatabase() {
 	c.DB = gormDB
 }
 
-func (c *MicroRestConfig) LoadDatabases(logLvl logrus.Level, dburls ...string) {
+func (c *MicroRestConfig) LoadDatabases(logLvl logrus.Level, dburls ...string) error {
 	if os.Getenv("DATABASE_URL") != "" {
 		if len(dburls) == 1 {
 			// use DB var in config
-			db, err := connectToDB(dburls[0], logLvl)
+			db, err := connectToDB(os.Getenv(dburls[0]), logLvl)
 			if err != nil {
-				log.Fatal("error connecting to db: ", err)
-				return
+				return errors.New(fmt.Sprintf("error connecting to db: %v", err))
 			}
 			c.DB = db
 		} else {
 			for _, v := range dburls {
-				db, err := connectToDB(v, logLvl)
+				db, err := connectToDB(os.Getenv(v), logLvl)
 				if err != nil {
-					log.Fatal("error connecting to db: ", err)
-					return
+					return errors.New(fmt.Sprintf("error connecting to db: %v", err))
 				}
 				// use DBList to populate all the databases given.
 				c.DBList = append(c.DBList, db)
 			}
 		}
 	}
+	return nil
 }
 
-func (c *MicroRestConfig) LoadHMACKeys() {
+func (c *MicroRestConfig) LoadHMACKeys() error {
 	// load in hmac keys
 	var hmacKeys models.HmacKeys
 	err := render.DecodeJSON(bytes.NewReader([]byte(os.Getenv("HMAC_SECRETS"))), &hmacKeys)
 	if err != nil {
-		log.Fatal("error pullin in hmac secret json obj: ", err)
-		return
+		return errors.New(fmt.Sprintf("error pullin in hmac secret json obj: %v", err))
 	}
 	c.HmacKeys = &hmacKeys
+	return nil
 }
 
 func connectToDB(dburl string, logLvl logrus.Level) (*gorm.DB, error) {
