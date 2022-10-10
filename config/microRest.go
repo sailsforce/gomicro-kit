@@ -21,8 +21,6 @@ import (
 	"gorm.io/gorm/logger"
 )
 
-type otherRuntimeVariables map[string]interface{}
-
 type newRelicInfo struct {
 	AppName     string
 	License     string
@@ -43,7 +41,7 @@ type serviceInfo struct {
 type MicroRestConfig struct {
 	NewRelic newRelicInfo
 	Service  serviceInfo
-	RV       otherRuntimeVariables
+	RV       map[string]interface{}
 	Logger   *logrus.Logger
 	// default to be used when setting up config.
 	DB *gorm.DB
@@ -59,7 +57,7 @@ func (c *MicroRestConfig) DefaultMicroConfig() {
 	c.LoadDatabases(c.Logger.Level, "DATABASE_URL")
 }
 
-func (c *MicroRestConfig) LoadNewRelicInfo() {
+func (c *MicroRestConfig) LoadNewRelicInfo() error {
 	c.NewRelic = newRelicInfo{
 		os.Getenv("NEW_RELIC_APP_NAME"),
 		os.Getenv("NEW_RELIC_LICENSE"),
@@ -78,10 +76,11 @@ func (c *MicroRestConfig) LoadNewRelicInfo() {
 			},
 		)
 		if err != nil {
-			log.Fatal("error setting up new relic logs: ", err)
+			return errors.New(fmt.Sprintf("error creating NewRelic App: %v", err))
 		}
 		c.NewRelic.App = relic
 	}
+	return nil
 }
 
 func (c *MicroRestConfig) LoadServiceInfo() {
@@ -131,14 +130,23 @@ func (c *MicroRestConfig) RegisterAtGateway() error {
 }
 
 func (c *MicroRestConfig) AddRV(key string, val interface{}) {
+	if c.RV == nil {
+		c.RV = make(map[string]interface{})
+	}
 	c.RV[key] = val
 }
 
 func (c *MicroRestConfig) AddRVFromEnv(envar string) {
+	if c.RV == nil {
+		c.RV = make(map[string]interface{})
+	}
 	c.RV[envar] = os.Getenv(envar)
 }
 
 func (c *MicroRestConfig) LoadRV(vars ...string) {
+	if c.RV == nil {
+		c.RV = make(map[string]interface{})
+	}
 	for _, v := range vars {
 		c.RV[v] = os.Getenv(v)
 	}
