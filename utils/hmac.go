@@ -3,17 +3,21 @@ package utils
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"strings"
+
+	"github.com/go-chi/render"
 )
 
 func CreateHmacHash(r *http.Request, secret string) []byte {
 	headerList := strings.Split(os.Getenv("HMAC_HEADERS"), ",")
 	var hmacMessage string
 
+	// add headers from header list
 	for _, v := range headerList {
 		h := r.Header.Get(v)
 		if os.Getenv("LOG_LEVEL") == "debug" {
@@ -21,6 +25,16 @@ func CreateHmacHash(r *http.Request, secret string) []byte {
 		}
 		hmacMessage = fmt.Sprintf("%v%v", hmacMessage, h)
 	}
+
+	// add request body
+	var reqBody interface{}
+	render.DecodeJSON(r.Body, &reqBody)
+	marshalReqBody, _ := json.Marshal(reqBody)
+	hmacMessage = fmt.Sprintf("%v%v", hmacMessage, string(marshalReqBody))
+
+	// add request url parameters
+	hmacMessage = fmt.Sprintf("%v%v", hmacMessage, r.URL.RawQuery)
+
 	if os.Getenv("LOG_LEVEL") == "debug" {
 		log.Printf("hmac_message: %v | %v", hmacMessage, secret)
 	}
