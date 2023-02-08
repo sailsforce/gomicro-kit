@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -81,7 +80,7 @@ func (c *MicroRestConfig) LoadNewRelicInfo() error {
 			},
 		)
 		if err != nil {
-			return errors.New(fmt.Sprintf("error creating NewRelic App: %v", err))
+			return fmt.Errorf("error creating NewRelic App: %v", err)
 		}
 		c.NewRelic.App = relic
 	}
@@ -105,11 +104,11 @@ func (c *MicroRestConfig) RegisterAtGateway() error {
 	var routesJson map[string]interface{}
 	err := json.Unmarshal([]byte(c.Service.Routes), &routesJson)
 	if err != nil {
-		return errors.New(fmt.Sprintf("%s %v", "error parsing routes json: ", err))
+		return fmt.Errorf("%s %v", "error parsing routes json: ", err)
 	}
 	routesBytes, err := json.Marshal(routesJson)
 	if err != nil {
-		return errors.New(fmt.Sprintf("%s %v", "error marshalling routes json: ", err))
+		return fmt.Errorf("%s %v", "error marshalling routes json: ", err)
 	}
 	service := models.Service{
 		ServiceName:     c.Service.Name,
@@ -126,7 +125,7 @@ func (c *MicroRestConfig) RegisterAtGateway() error {
 		if strings.Contains(err.Error(), "409") {
 			c.Logger.Info("service already registered.")
 		} else {
-			return errors.New(fmt.Sprintf("%s %v", "error registering service: ", err))
+			return fmt.Errorf("%s %v", "error registering service: ", err)
 		}
 	}
 
@@ -193,14 +192,14 @@ func (c *MicroRestConfig) LoadDatabases(logLvl logrus.Level, dburls ...string) e
 			// use DB var in config
 			db, err := connectToDB(os.Getenv(dburls[0]), logLvl)
 			if err != nil {
-				return errors.New(fmt.Sprintf("error connecting to db: %v", err))
+				return fmt.Errorf("error connecting to db: %v", err)
 			}
 			c.DB = db
 		} else {
 			for _, v := range dburls {
 				db, err := connectToDB(os.Getenv(v), logLvl)
 				if err != nil {
-					return errors.New(fmt.Sprintf("error connecting to db: %v", err))
+					return fmt.Errorf("error connecting to db: %v", err)
 				}
 				// use DBList to populate all the databases given.
 				c.DBList = append(c.DBList, db)
@@ -215,7 +214,7 @@ func (c *MicroRestConfig) LoadHMACKeys() error {
 	var hmacKeys models.HmacKeys
 	err := render.DecodeJSON(bytes.NewReader([]byte(os.Getenv("HMAC_SECRETS"))), &hmacKeys)
 	if err != nil {
-		return errors.New(fmt.Sprintf("error pullin in hmac secret json obj: %v", err))
+		return fmt.Errorf("error pullin in hmac secret json obj: %v", err)
 	}
 	c.HmacKeys = &hmacKeys
 	return nil

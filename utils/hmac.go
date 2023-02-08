@@ -6,7 +6,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
@@ -27,9 +27,9 @@ func CreateHmacHash(r *http.Request, secret string) []byte {
 	}
 
 	// add request body
-	bodyBytes, _ := ioutil.ReadAll(r.Body)
+	bodyBytes, _ := io.ReadAll(r.Body)
 	// Restore the io.ReadCloser to its original state
-	r.Body = ioutil.NopCloser(bytes.NewBuffer(bodyBytes))
+	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 	// Use the content
 	marshalReqBody, _ := json.Marshal(string(bodyBytes))
 	hmacMessage = fmt.Sprintf("%v%v", hmacMessage, string(marshalReqBody))
