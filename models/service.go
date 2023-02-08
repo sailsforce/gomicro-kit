@@ -78,7 +78,7 @@ func (s *Service) RegisterAtGateway(gatewayUrl string) error {
 
 	c := http.DefaultClient
 	resp, err := c.Do(req)
-	if resp.StatusCode != 200 || err != nil {
+	if err != nil || resp.StatusCode != 200 {
 		return fmt.Errorf("error registering service. Status: %v | err: %v", resp.StatusCode, err)
 	}
 
