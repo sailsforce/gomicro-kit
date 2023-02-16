@@ -31,7 +31,10 @@ func CreateHmacHash(r *http.Request, secret string) []byte {
 	// Restore the io.ReadCloser to its original state
 	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
 	// Use the content
-	marshalReqBody, _ := json.Marshal(string(bodyBytes))
+	data := make(map[string]interface{})
+	json.Unmarshal(bodyBytes, &data)
+	marshalReqBody, _ := json.Marshal(data)
+
 	hmacMessage = fmt.Sprintf("%v%v", hmacMessage, string(marshalReqBody))
 
 	// add request url parameters
