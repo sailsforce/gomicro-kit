@@ -1,16 +1,16 @@
 package utils
 
 import (
+	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"os"
 	"strings"
-
-	"github.com/go-chi/render"
 )
 
 func CreateHmacHash(r *http.Request, secret string) []byte {
@@ -27,9 +27,14 @@ func CreateHmacHash(r *http.Request, secret string) []byte {
 	}
 
 	// add request body
-	var reqBody interface{}
-	render.DecodeJSON(r.Body, &reqBody)
-	marshalReqBody, _ := json.Marshal(reqBody)
+	bodyBytes, _ := io.ReadAll(r.Body)
+	// Restore the io.ReadCloser to its original state
+	r.Body = io.NopCloser(bytes.NewBuffer(bodyBytes))
+	// Use the content
+	data := make(map[string]interface{})
+	json.Unmarshal(bodyBytes, &data)
+	marshalReqBody, _ := json.Marshal(data)
+
 	hmacMessage = fmt.Sprintf("%v%v", hmacMessage, string(marshalReqBody))
 
 	// add request url parameters
